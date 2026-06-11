@@ -3,7 +3,6 @@ import json
 import time
 import csv
 
-# Portfele do porównania
 PORTFELE = {
     "Zdywersyfikowany": {
         "PKO.WA": 0.15,
@@ -36,16 +35,14 @@ PORTFELE = {
     },
 }
 
-WARTOSC_PORTFELA = 100_000   # 100 000 zł
-N_SYMULACJI     = 10_000     # symulacji na węzeł
-N_WEZLOW        = 4          # węzły FLUX
+WARTOSC_PORTFELA = 100_000
+N_SYMULACJI = 10_000
+N_WEZLOW = 4
 
 
 def uruchom_flux(nazwa, wagi):
     portfel_json = json.dumps(wagi)
-
     wyniki_linie = []
-
     for i in range(N_WEZLOW):
         p = subprocess.run(
             ["flux", "run", "python3", "var_simulation.py",
@@ -57,11 +54,10 @@ def uruchom_flux(nazwa, wagi):
         )
         if p.stdout.strip():
             wyniki_linie.append(p.stdout.strip())
-
     return wyniki_linie
 
+
 def polacz_wyniki(linie):
-    """Łączy wyniki ze wszystkich węzłów"""
     var90_lista, var95_lista, var99_lista = [], [], []
     zwroty, odch = [], []
 
@@ -70,13 +66,10 @@ def polacz_wyniki(linie):
         if not linia:
             continue
         try:
-            # Spróbuj sparsować bezpośrednio
             dane = json.loads(linia)
         except Exception:
-            # Jeśli nie wyszło - usuń prefix "0: " od FLUXa
             try:
-                linia = linia.split(": ", 1)[1]
-                dane = json.loads(linia)
+                dane = json.loads(linia.split(": ", 1)[1])
             except Exception:
                 continue
 
@@ -100,18 +93,16 @@ def polacz_wyniki(linie):
 
 
 def main():
-    print("""
-╔══════════════════════════════════════════════════════════════╗
-║         VALUE AT RISK – SYMULACJA MONTE CARLO                ║
-║         Portfele akcji WIG20  |  Wartość: 100 000 zł         ║
-╚══════════════════════════════════════════════════════════════╝
-""")
+    print("Value at Risk – symulacja Monte Carlo, portfele WIG20")
+    print(f"Wartosc portfela: {WARTOSC_PORTFELA:,} zl, wezly FLUX: {N_WEZLOW}, symulacji na wezel: {N_SYMULACJI:,}")
+    print("=" * 60)
 
     wszystkie_wyniki = []
 
     for nazwa, wagi in PORTFELE.items():
-        print(f"  Symuluje portfel: {nazwa}...")
-        print(f"  Skład: {', '.join(f'{t}({int(w*100)}%)' for t,w in wagi.items())}")
+        sklad = ", ".join(f"{t}({int(w*100)}%)" for t, w in wagi.items())
+        print(f"\nPortfel: {nazwa}")
+        print(f"Sklad:   {sklad}")
 
         start = time.time()
         linie = uruchom_flux(nazwa, wagi)
@@ -120,21 +111,16 @@ def main():
         wynik = polacz_wyniki(linie)
 
         if wynik is None:
-            print(f"  BŁĄD – brak wyników!\n")
+            print("Blad: brak wynikow.")
             continue
 
-        print(f"""
-  ┌─────────────────────────────────────────┐
-  │  Symulacji łącznie: {wynik['n_symulacji']:>10,}           │
-  │  Czas obliczeń:     {czas:>10.2f} s         │
-  │  Średni zwrot:      {wynik['sredni_zwrot']:>10.2f} zł        │
-  │  Odch. std:         {wynik['odch_std']:>10.2f} zł        │
-  ├─────────────────────────────────────────┤
-  │  VaR 90%:           {wynik['VaR_90']:>10.2f} zł        │
-  │  VaR 95%:           {wynik['VaR_95']:>10.2f} zł        │
-  │  VaR 99%:           {wynik['VaR_99']:>10.2f} zł        │
-  └─────────────────────────────────────────┘
-""")
+        print(f"Symulacji lacznie: {wynik['n_symulacji']:,}")
+        print(f"Czas obliczen:     {czas:.2f} s")
+        print(f"Sredni zwrot:      {wynik['sredni_zwrot']:.2f} zl")
+        print(f"Odch. std:         {wynik['odch_std']:.2f} zl")
+        print(f"VaR 90%:           {wynik['VaR_90']:.2f} zl")
+        print(f"VaR 95%:           {wynik['VaR_95']:.2f} zl")
+        print(f"VaR 99%:           {wynik['VaR_99']:.2f} zl")
 
         wszystkie_wyniki.append({
             "portfel": nazwa,
@@ -148,18 +134,14 @@ def main():
             "VaR_99": wynik["VaR_99"],
         })
 
-    # Podsumowanie
-    print("""
-╔══════════════════════════════════════════════════════════════╗
-║                    PODSUMOWANIE KOŃCOWE                      ║
-╚══════════════════════════════════════════════════════════════╝""")
-    print(f"\n  {'Portfel':<20} {'VaR 90%':>12} {'VaR 95%':>12} {'VaR 99%':>12} {'Śr. zwrot':>12}")
-    print("  " + "─" * 70)
+    print("\n" + "=" * 60)
+    print("Podsumowanie")
+    print(f"{'Portfel':<20} {'VaR 90%':>12} {'VaR 95%':>12} {'VaR 99%':>12} {'Sr. zwrot':>12}")
+    print("-" * 60)
     for w in wszystkie_wyniki:
-        print(f"  {w['portfel']:<20} {w['VaR_90']:>11.0f}zł {w['VaR_95']:>11.0f}zł "
-              f"{w['VaR_99']:>11.0f}zł {w['sredni_zwrot']:>11.0f}zł")
+        print(f"{w['portfel']:<20} {w['VaR_90']:>12.0f} {w['VaR_95']:>12.0f} "
+              f"{w['VaR_99']:>12.0f} {w['sredni_zwrot']:>12.0f}")
 
-    # Zapis CSV
     with open("wyniki_var.csv", "w", newline="", encoding="utf-8") as f:
         pola = ["portfel", "sklad", "n_symulacji", "czas_s",
                 "sredni_zwrot", "odch_std", "VaR_90", "VaR_95", "VaR_99"]
@@ -167,7 +149,7 @@ def main():
         writer.writeheader()
         writer.writerows(wszystkie_wyniki)
 
-    print("\n  Wyniki zapisane do: wyniki_var.csv")
+    print("\nWyniki zapisane do wyniki_var.csv")
 
 
 if __name__ == "__main__":

@@ -3,8 +3,6 @@ import json
 import time
 import csv
 
-PI = 3.141592653589793
-
 PORTFELE = {
     "Zdywersyfikowany": {
         "PKO.WA": 0.15,
@@ -121,51 +119,41 @@ def parsuj_mpi(linie):
 
 
 def main():
-    print("""
-╔══════════════════════════════════════════════════════════════╗
-║         PORÓWNANIE: FLUX vs MPI                              ║
-║         Value at Risk – Portfele WIG20                       ║
-║         Wartość portfela: 100 000 zł                         ║
-╚══════════════════════════════════════════════════════════════╝""")
+    print("Porownanie FLUX vs MPI – Value at Risk, portfele WIG20")
+    print(f"Wartosc portfela: {WARTOSC_PORTFELA:,} zl, symulacji na wezel: {N_SYMULACJI:,}")
+    print("=" * 70)
 
     wszystkie = []
 
     for nazwa, wagi in PORTFELE.items():
-        print(f"\n  ┌─ Portfel: {nazwa} {'─'*(47-len(nazwa))}┐")
-        print(f"  │  Skład: {', '.join(f'{t}({int(w*100)}%)' for t,w in wagi.items())}")
-        print(f"  │")
+        sklad = ", ".join(f"{t}({int(w*100)}%)" for t, w in wagi.items())
+        print(f"\nPortfel: {nazwa}")
+        print(f"Sklad:   {sklad}")
+        print("-" * 70)
 
-        # FLUX
-        print(f"  │  Uruchamiam FLUX...", end="\r")
         start = time.time()
         linie_flux = uruchom_flux(wagi)
         czas_flux = round(time.time() - start, 2)
         wynik_flux = parsuj_flux(linie_flux)
 
-        # MPI
-        print(f"  │  Uruchamiam MPI... ", end="\r")
         start = time.time()
         linie_mpi = uruchom_mpi(wagi)
         czas_mpi = round(time.time() - start, 2)
         wynik_mpi = parsuj_mpi(linie_mpi)
 
         if wynik_flux and wynik_mpi:
-            print(f"""  │
-  │  {'Miara':<20} {'FLUX':>12} {'MPI':>12} {'Różnica':>12}
-  │  {'─'*58}
-  │  {'Symulacji łącznie':<20} {wynik_flux['n_symulacji']:>12,} {wynik_mpi['n_symulacji']:>12,}
-  │  {'Czas obliczeń':<20} {czas_flux:>11.2f}s {czas_mpi:>11.2f}s {round(czas_flux-czas_mpi,2):>+11.2f}s
-  │  {'Średni zwrot':<20} {wynik_flux['sredni_zwrot']:>11.0f}zł {wynik_mpi['sredni_zwrot']:>11.0f}zł
-  │  {'Odch. std':<20} {wynik_flux['odch_std']:>11.0f}zł {wynik_mpi['odch_std']:>11.0f}zł
-  │  {'─'*58}
-  │  {'VaR 90%':<20} {wynik_flux['VaR_90']:>11.0f}zł {wynik_mpi['VaR_90']:>11.0f}zł {round(wynik_flux['VaR_90']-wynik_mpi['VaR_90'],0):>+10.0f}zł
-  │  {'VaR 95%':<20} {wynik_flux['VaR_95']:>11.0f}zł {wynik_mpi['VaR_95']:>11.0f}zł {round(wynik_flux['VaR_95']-wynik_mpi['VaR_95'],0):>+10.0f}zł
-  │  {'VaR 99%':<20} {wynik_flux['VaR_99']:>11.0f}zł {wynik_mpi['VaR_99']:>11.0f}zł {round(wynik_flux['VaR_99']-wynik_mpi['VaR_99'],0):>+10.0f}zł""")
-
-            szybszy = "FLUX" if czas_flux < czas_mpi else "MPI "
-            print(f"  │")
-            print(f"  │  ⚡ Szybszy: {szybszy} | Różnica czasu: {abs(round(czas_flux-czas_mpi,2))}s")
-            print(f"  └{'─'*60}┘")
+            print(f"{'Miara':<22} {'FLUX':>12} {'MPI':>12} {'Roznica':>12}")
+            print("-" * 60)
+            print(f"{'Symulacji lacznie':<22} {wynik_flux['n_symulacji']:>12,} {wynik_mpi['n_symulacji']:>12,}")
+            print(f"{'Czas obliczen [s]':<22} {czas_flux:>12.2f} {czas_mpi:>12.2f} {czas_flux-czas_mpi:>+12.2f}")
+            print(f"{'Sredni zwrot [zl]':<22} {wynik_flux['sredni_zwrot']:>12.0f} {wynik_mpi['sredni_zwrot']:>12.0f}")
+            print(f"{'Odch. std [zl]':<22} {wynik_flux['odch_std']:>12.0f} {wynik_mpi['odch_std']:>12.0f}")
+            print("-" * 60)
+            print(f"{'VaR 90% [zl]':<22} {wynik_flux['VaR_90']:>12.0f} {wynik_mpi['VaR_90']:>12.0f} {wynik_flux['VaR_90']-wynik_mpi['VaR_90']:>+12.0f}")
+            print(f"{'VaR 95% [zl]':<22} {wynik_flux['VaR_95']:>12.0f} {wynik_mpi['VaR_95']:>12.0f} {wynik_flux['VaR_95']-wynik_mpi['VaR_95']:>+12.0f}")
+            print(f"{'VaR 99% [zl]':<22} {wynik_flux['VaR_99']:>12.0f} {wynik_mpi['VaR_99']:>12.0f} {wynik_flux['VaR_99']-wynik_mpi['VaR_99']:>+12.0f}")
+            szybszy = "FLUX" if czas_flux < czas_mpi else "MPI"
+            print(f"\nSzybsza implementacja: {szybszy} (roznica {abs(round(czas_flux-czas_mpi,2))}s)")
 
             wszystkie.append({
                 "portfel": nazwa,
@@ -181,26 +169,22 @@ def main():
                 "mpi_zwrot": wynik_mpi["sredni_zwrot"],
             })
 
-    # Podsumowanie
-    print(f"""
-╔══════════════════════════════════════════════════════════════╗
-║                    PODSUMOWANIE KOŃCOWE                      ║
-╚══════════════════════════════════════════════════════════════╝
-  {'Portfel':<20} {'FLUX t':>8} {'MPI t':>8} {'FLUX VaR95':>12} {'MPI VaR95':>12}
-  {'─'*64}""")
+    print("\n" + "=" * 70)
+    print("Podsumowanie")
+    print("=" * 70)
+    print(f"{'Portfel':<20} {'FLUX [s]':>10} {'MPI [s]':>10} {'FLUX VaR95':>12} {'MPI VaR95':>12}")
+    print("-" * 70)
     for w in wszystkie:
-        szybszy = "✅" if w["flux_czas"] < w["mpi_czas"] else "  "
-        print(f"  {w['portfel']:<20} {w['flux_czas']:>7.2f}s {szybszy} {w['mpi_czas']:>7.2f}s "
-              f"{w['flux_var95']:>11.0f}zł {w['mpi_var95']:>11.0f}zł")
+        print(f"{w['portfel']:<20} {w['flux_czas']:>10.2f} {w['mpi_czas']:>10.2f} "
+              f"{w['flux_var95']:>12.0f} {w['mpi_var95']:>12.0f}")
 
-    # Zapis CSV
     with open("porownanie_flux_mpi.csv", "w", newline="", encoding="utf-8") as f:
         pola = list(wszystkie[0].keys()) if wszystkie else []
         writer = csv.DictWriter(f, fieldnames=pola)
         writer.writeheader()
         writer.writerows(wszystkie)
 
-    print(f"\n  Wyniki zapisane do: porownanie_flux_mpi.csv")
+    print("\nWyniki zapisane do porownanie_flux_mpi.csv")
 
 
 if __name__ == "__main__":
